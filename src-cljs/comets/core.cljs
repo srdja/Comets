@@ -230,11 +230,13 @@
 
 (defn update-player-direction
   [s]
-  (let [up    (:w @keys-down)
-        down  (:s @keys-down)
-        left  (:a @keys-down)
-        right (:d @keys-down)
-        ]))
+  (update-in s [:player :direction-vector]
+             (fn [] (math/vector-normalize
+                     (map +
+                          (:w @keys-down)
+                          (:a @keys-down)
+                          (:s @keys-down)
+                          (:d @keys-down))))))
 
 
 (defn update-player-rotation-angle
