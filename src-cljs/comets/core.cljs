@@ -39,7 +39,7 @@
 
 ;; It's more convinient to grab input events and then poll them later
 (def mouse-pos  (atom {:x 1 :y 1}))
-(def keys-down  (atom {:w false :a false :s false :d false :any false}))
+(def keys-down  (atom {:w [0 0] :a [0 0] :s [0 0] :d [0 0] :any [0 0]}))
 (def click-down (atom {:left false :right false}))
 
 
@@ -72,25 +72,26 @@
               {:x (:x @mouse-pos) :y (:y @mouse-pos)}))))
 
 
-(defn update-key-state
-  [event update]
-  (let [keys @keys-down]
-    (case (aget event "keyCode")
-      87 (update-in keys [:w] update)
-      65 (update-in keys [:a] update)
-      83 (update-in keys [:s] update)
-      86 (update-in keys [:d] update)
-      (update-in keys [:any] update))))
-
-
 (defn update-key-down
   [event]
-  (update-key-state event (fn [n] true)))
+  (let [keys @keys-down]
+    (case (aget event "keyCode")
+      87 (update-in keys [:w] [ 0 -1])
+      65 (update-in keys [:a] [-1  0])
+      83 (update-in keys [:s] [ 0  1])
+      86 (update-in keys [:d] [ 1  0])
+      (update-in keys [:any] [0 0]))))
 
 
 (defn update-key-up
   [event]
-  (update-key-state event (fn [n] false)))
+  (let [keys @keys-down]
+    (case (aget event "keyCode")
+      87 (update-in keys [:w] [0 0])
+      65 (update-in keys [:a] [0 0])
+      83 (update-in keys [:s] [0 0])
+      86 (update-in keys [:d] [0 0])
+      (update-in keys [:any] [0 0]))))
 
 ;; ----------------------------------------
 ;;  Register callbacks
@@ -229,7 +230,11 @@
 
 (defn update-player-direction
   [s]
-  ())
+  (let [up    (:w @keys-down)
+        down  (:s @keys-down)
+        left  (:a @keys-down)
+        right (:d @keys-down)
+        ]))
 
 
 (defn update-player-rotation-angle
