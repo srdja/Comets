@@ -126,6 +126,21 @@
         (.restore context))))
 
 
+(defn draw-bullets
+  [state context]
+  (doseq (get-in state [:bullets])
+    (fn [b]
+      (let [bx (get-in b [:position :x])
+            by (get-in b [:position :y])
+            r  (:radius b)]
+        (do (.save context)
+            (.translate context (+ bx r) (+ by r))
+            (.beginPath context)
+            (.arc context bx by r 0 (* 2 3.1415) false)
+            (.fill context)
+            (.restore context))))))
+
+
 (defn draw-comet
   [c comet]
   ())
@@ -198,34 +213,41 @@
 ;; ----------------------------------------------------------------------
 
 
-(def time {:start (.now js/Date)
-           :delta 0
-           :current 0})
-
+(def time
+  {:start (.now js/Date)
+   :delta 0
+   :current 0})
 
 (def animation {:duration 0})
 
 
-;;(def entity {:position {:x (/ 900 2) :y (/ 700 2)}
-;;             :anim animation
-;;             :direction-vect [0 0]
-;;             :collision-circle 0})
+(def player
+  {:is-alive true
+   :position {:x (/ 900 2) :y (/ 700 2)}
+   :direction-vector [0 0]
+   :rotation-angle 0
+   :lives 3
+   :speed-mod 120
+   :health 100
+   :collision-circle-radius 5
+   :score 0})
 
 
-(def player {:is-alive true
-             :position {:x (/ 900 2) :y (/ 700 2)}
-             :direction-vector [0 0]
-             :rotation-angle 0
-             :lives 3
-             :speed-mod 100
-             :health 100
-             :collision-circle-radius 5
-             :score 0})
+(def bullet
+  {:position {:x 0 :y 0}
+   :direction-vector [0 0]
+   :damage 10
+   :speed-mod 240
+   :radius 3
+   :collision-circle-radius 3})
 
 
 (def game-state
   (atom {:timer time
-         :player player}))
+         :player player
+         :projectiles projectiles
+         :bullets []
+         :}))
 
 
 (defn update-player-position
