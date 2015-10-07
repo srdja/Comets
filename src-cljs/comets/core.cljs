@@ -40,7 +40,7 @@
 ;; It's more convinient to grab input events and then poll them later
 (def mouse-pos  (atom {:x 1 :y 1}))
 (def keys-down  (atom {:w [0 0] :a [0 0] :s [0 0] :d [0 0]}))
-(def click-down (atom {:left false :right false}))
+(def click-down (atom false))
 
 
 (defn is-canvas-coord
@@ -58,6 +58,16 @@
             (> view-y rect-b))
       false
       true)))
+
+
+(defn update-mouse-down
+  [event]
+  (reset! click-down true))
+
+
+(defn update-mouse-up
+  [event]
+  (reset! click-down false))
 
 
 (defn update-mouse-pos
@@ -99,7 +109,8 @@
 (aset js/window "onmousemove" update-mouse-pos)
 (aset js/window "onkeydown" update-key-down)
 (aset js/window "onkeyup" update-key-up)
-
+(aset js/window "onmouseup" update-mouse-up)
+(aset js/window "onmousedown" update-mouse-down)
 
 ;; ----------------------------------------------------------------------
 ;;
@@ -128,7 +139,7 @@
 
 (defn draw-bullets
   [state context]
-  (doseq (get-in state [:bullets])
+  (doseq [i (:bullets state)]
     (fn [b]
       (let [bx (get-in b [:position :x])
             by (get-in b [:position :y])
@@ -218,7 +229,9 @@
    :delta 0
    :current 0})
 
-(def animation {:duration 0})
+
+(def animation
+  {:duration 0})
 
 
 (def player
@@ -247,8 +260,13 @@
          :player player
          :projectiles projectiles
          :bullets []
-         :}))
+         }))
 
+;; ----------------------------------------------------------------------
+;;
+;;  Player stuff
+;;
+;; ----------------------------------------------------------------------
 
 (defn update-player-position
   [s]
@@ -289,6 +307,13 @@
         adj (* -1 (+ ang (/ 3.1415 2)))]      ;; The angle at which the player would be facing the mouse
                                               ;; * -1 flips the direction of the rotation
     (update-in s [:player :rotation-angle] (fn [] adj))))
+
+;; ----------------------------------------------------------------------
+;;
+;;  Bullets
+;;
+;; ----------------------------------------------------------------------
+
 
 
 (defn new-game
