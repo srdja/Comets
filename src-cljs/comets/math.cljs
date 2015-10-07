@@ -20,8 +20,10 @@
 (defn vector-normalize
   [v]
   (let [x (nth v 0)
-        y (nth v 1)
-        l (.sqrt js/Math (+ (* x x)
-                            (* y y)))]
-    [(* (/ 1.0 l) x)
-     (* (/ 1.0 l) y)]))
+        y (nth v 1)]
+    (if (or (= x 0) (= y 0))
+      v
+      (let [l (.sqrt js/Math (+ (* x x)
+                                (* x x)))]
+        [(* (/ 1 l) x)
+         (* (/ 1 l) y)]))))
