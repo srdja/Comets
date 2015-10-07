@@ -39,7 +39,7 @@
 
 ;; It's more convinient to grab input events and then poll them later
 (def mouse-pos  (atom {:x 1 :y 1}))
-(def keys-down  (atom {:w [0 0] :a [0 0] :s [0 0] :d [0 0] :any [0 0]}))
+(def keys-down  (atom {:w [0 0] :a [0 0] :s [0 0] :d [0 0]}))
 (def click-down (atom {:left false :right false}))
 
 
@@ -76,22 +76,22 @@
   [event]
   (let [keys @keys-down]
     (case (aget event "keyCode")
-      87 (update-in keys [:w] [ 0 -1])
-      65 (update-in keys [:a] [-1  0])
-      83 (update-in keys [:s] [ 0  1])
-      86 (update-in keys [:d] [ 1  0])
-      (update-in keys [:any] [0 0]))))
+      87 (reset! keys-down (update-in keys [:w] (fn [] [ 0 -1])))
+      65 (reset! keys-down (update-in keys [:a] (fn [] [-1  0])))
+      83 (reset! keys-down (update-in keys [:s] (fn [] [ 0  1])))
+      68 (reset! keys-down (update-in keys [:d] (fn [] [ 1  0])))
+      event)))
 
 
 (defn update-key-up
   [event]
   (let [keys @keys-down]
     (case (aget event "keyCode")
-      87 (update-in keys [:w] [0 0])
-      65 (update-in keys [:a] [0 0])
-      83 (update-in keys [:s] [0 0])
-      86 (update-in keys [:d] [0 0])
-      (update-in keys [:any] [0 0]))))
+      87 (reset! keys-down (update-in keys [:w] (fn [] [0 0])))
+      65 (reset! keys-down (update-in keys [:a] (fn [] [0 0])))
+      83 (reset! keys-down (update-in keys [:s] (fn [] [0 0])))
+      68 (reset! keys-down (update-in keys [:d] (fn [] [0 0])))
+      event)))
 
 ;; ----------------------------------------
 ;;  Register callbacks
@@ -217,15 +217,29 @@
              :direction-vector [0 0]
              :rotation-angle 0
              :lives 3
-             :speed-mod 2
+             :speed-mod 100
              :health 100
              :collision-circle-radius 5
              :score 0})
 
 
+(def game-state
+  (atom {:timer time
+         :player player}))
+
+
 (defn update-player-position
   [s]
-  ())
+  (let [play-x  (get-in s [:player :position :x])
+        play-y  (get-in s [:player :position :y])
+        dir     (get-in s [:player :direction-vector])
+        speed   (get-in s [:player :speed-mod])
+        dt-sec  (/ (get-in s [:time :delta]) 1000)
+        moved-x (* speed dt-sec (nth dir 0))
+        moved-y (* speed dt-sec (nth dir 1))
+        new-x   (+ play-x moved-x)
+        new-y   (+ play-y moved-y)]
+    (update-in s [:player :position] (fn [] {:x new-x :y new-y}))))
 
 
 (defn update-player-direction
@@ -255,28 +269,28 @@
     (update-in s [:player :rotation-angle] (fn [] adj))))
 
 
-(def game-state
-  (atom {:timer time
-         :player player}))
-
-
 (defn new-game
   [s]
   s)
 
+
 (defn debug
   [s]
-  (do (.log js/console (gstr/format "%s" (get-in s [:player :rotation-angle])))
+  (do (.log js/console (gstr/format "x=%s y=%s" (nth (get-in s [:player :direction-vector]) 0)
+                                                (nth (get-in s [:player :direction-vector]) 1)))
       s))
+
 
 (defn update-frame
   []
   (do (reset! game-state
               (update-time-start
                (draw-frame
-                (update-player-rotation-angle
-                 (update-time-delta @game-state))))))
-      (.requestAnimationFrame js/window update-frame))
+                (update-player-position
+                 (update-player-direction
+                  (update-player-rotation-angle
+                   (update-time-delta @game-state)))))))
+      (.requestAnimationFrame js/window update-frame)))
 
 
 (.requestAnimationFrame js/window update-frame)
