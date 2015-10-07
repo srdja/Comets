@@ -1,0 +1,9 @@
+{"version":3,
+ "file":"/home/srdja/src/comets/resources/public/js/comets/math.js",
+ "sources":["math.cljs"],
+ "lineCount":7,
+ "mappings":
+ ";AAiBA;;AAEA,+BAAA,8BAAA,7DAAMA,0DACHC,GACD,qHAAA,AAAA,jHAAMC,IAAE,0BAAA,1BAACC,wBAAIF,WACPG,IAAE,0BAAA,1BAACD,wBAAIF,WACPI,IAAE,AAAOC,UAAQ,CAAG,CAAGJ,IAAEA,KACL,CAAGE,IAAEA,+FAC5B,CAAG,CAAA,MAAOC,KAAGH,GACb,CAAG,CAAA,MAAOG,KAAGD",
+ "names":
+ ["comets.math/vector-normalize", "v", "x", "cljs.core/nth", "y", "l",
+  "js/Math"]}
