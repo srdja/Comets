@@ -246,7 +246,7 @@
    :lives 3
    :speed-mod 120
    :health 100
-   :attack-delay 400
+   :attack-delay 130
    :time-before-attack 0
    :collision-circle-radius 5
    :score 0})
