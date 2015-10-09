@@ -256,7 +256,7 @@
   {:position {:x 0 :y 0}
    :direction-vector [0 0]
    :damage 10
-   :speed-mod 240
+   :speed-mod 340
    :radius 2
    :time-to-live 5               ;; in seconds
    :collision-circle-radius 2})
@@ -369,8 +369,8 @@
         time    (get-in state [:time :delta])]
     (if (and @click-down (<= think 0))
       (update-in (bullet-spawn state
-                               {:x (+ px (* -13 fw-x))   ;; the bullet should spawn at the tip of the ship
-                                :y (+ py (* -13 fw-y))}  ;; coordinates are flipped
+                               {:x (+ px (* 11 fw-x))   ;; the bullet should spawn at the tip of the ship
+                                :y (+ py (* 11 fw-y))}  ;; coordinates are flipped
                                [fw-x fw-y])
                  [:player :time-before-attack]
                  (fn [] delay))
