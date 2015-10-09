@@ -15,9 +15,12 @@
 ;; along with Comets.  If not, see <http://www.gnu.org/licenses/>.
 ;;
 
-
+;; TODO: Break this file into multiple smaller ones
+;;
 ;; NOTE: Functions should probably just work the narrowest possible
 ;;       structure and let the caller update the wider structure
+;;
+;; TODO/NOTE: Many functions can be generalized
 
 
 (ns comets.core
@@ -139,17 +142,16 @@
 
 (defn draw-bullets
   [state context]
-  (doseq [i (:bullets state)]
-    (fn [b]
-      (let [bx (get-in b [:position :x])
-            by (get-in b [:position :y])
-            r  (:radius b)]
-        (do (.save context)
-            (.translate context (+ bx r) (+ by r))
-            (.beginPath context)
-            (.arc context bx by r 0 (* 2 3.1415) false)
-            (.fill context)
-            (.restore context))))))
+  (doseq [b (:bullets state)]
+    (let [bx (get-in b [:position :x])
+          by (get-in b [:position :y])
+          r  (:radius b)]
+      (do (.save context)
+          (.beginPath context)
+          (.arc context (+ bx r) (+ by r) r 0 (* 2 3.1415) false)
+          (.fill context)
+          (.closePath context)
+          (.restore context)))))
 
 
 (defn draw-comet
@@ -184,13 +186,14 @@
 
 (defn draw-alien-ship
   [state]
-  ())
+   ())
 
 
 (defn draw-frame
   [state]
   (do (.clearRect context 0 0 900 700)
       (draw-player-ship state context)
+      (draw-bullets state context)
       (draw-hud state context)
       state))
 
@@ -238,10 +241,13 @@
   {:is-alive true
    :position {:x (/ 900 2) :y (/ 700 2)}
    :direction-vector [0 0]
+   :forward-vector [0 0]
    :rotation-angle 0
    :lives 3
    :speed-mod 120
    :health 100
+   :attack-delay 400
+   :time-before-attack 0
    :collision-circle-radius 5
    :score 0})
 
@@ -251,17 +257,56 @@
    :direction-vector [0 0]
    :damage 10
    :speed-mod 240
-   :radius 3
-   :collision-circle-radius 3})
+   :radius 2
+   :time-to-live 5               ;; in seconds
+   :collision-circle-radius 2})
 
 
 (def game-state
   (atom {:timer time
          :player player
-         :projectiles projectiles
          :bullets []
          }))
 
+;; ----------------------------------------------------------------------
+;;
+;;  Bullets
+;;
+;; ----------------------------------------------------------------------
+
+(defn bullet-spawn
+  [state pos dir]
+  (update-in
+   state
+   [:bullets]
+   (fn []
+     (conj (:bullets state)
+           (assoc bullet
+                  :position pos
+                  :directin-vector dir)))))
+
+
+(defn update-bullet-position
+  [bullet time-delta]
+  (let [x       (get-in bullet [:position :x])
+        y       (get-in bullet [:position :y])
+        speed   (get-in bullet [:speed-mod])
+        dir     (get-in bullet [:direction-vector])
+        moved-x (* speed (/ time-delta 1000) (nth dir 0))
+        moved-y (* speed (/ time-delta 1000) (nth dir 1))
+        new-x   (+ x moved-x)
+        new-y   (+ y moved-y)]
+    (update-in bullet [:position] (fn [] {:x new-x :y new-y}))))
+
+
+(defn update-bullets
+  [state]
+  (let [time (get-in state [:time :delta])]
+    (update-in
+     state
+     [:bullets]
+     (fn [] (into []
+                  (map (fn [m] (update-bullet-position m time)) (:bullets state)))))))
 ;; ----------------------------------------------------------------------
 ;;
 ;;  Player stuff
@@ -294,7 +339,9 @@
 
 
 (defn update-player-rotation-angle
-  "Direction is based on the position of the mouse sursor. The player ship
+  "Updates the rotation-angle of the ship and the forward-vector.
+
+  Direction is based on the position of the mouse sursor. The player ship
   should always facing the cursor"
   [s]
   (let [mx  (:x @mouse-pos)                   ;; mouse pointer x coordinate
@@ -306,14 +353,30 @@
         ang (.atan2 js/Math a b)
         adj (* -1 (+ ang (/ 3.1415 2)))]      ;; The angle at which the player would be facing the mouse
                                               ;; * -1 flips the direction of the rotation
-    (update-in s [:player :rotation-angle] (fn [] adj))))
+    (update-in (update-in s [:player :rotation-angle] (fn [] adj))
+               [:player :forward-vector] (fn [] (math/vector-normalize [a b])))))
 
-;; ----------------------------------------------------------------------
-;;
-;;  Bullets
-;;
-;; ----------------------------------------------------------------------
 
+(defn update-player-attack
+  [state]
+  (let [bullets (:bullets state)
+        px      (get-in state [:player :position :x])
+        py      (get-in state [:player :position :y])
+        fw-x    (nth (get-in state [:player :forward-vector]) 0)
+        fw-y    (nth (get-in state [:player :forward-vector]) 1)
+        delay   (get-in state [:player :attack-delay])
+        think   (get-in state [:player :time-before-attack])
+        time    (get-in state [:time :delta])]
+    (if (and @click-down (<= think 0))
+      (update-in (bullet-spawn state
+                               {:x (+ px (* 10 fw-x))   ;; the bullet should spawn at the tip of the ship
+                                :y (+ py (* 10 fw-y))}
+                               [fw-x fw-y])
+                 [:player :time-before-attack]
+                 (fn [] delay))
+      (update-in state
+                 [:player :time-before-attack]
+                 (fn [] (- think time))))))
 
 
 (defn new-game
@@ -323,9 +386,8 @@
 
 (defn debug
   [s]
-  (do (.log js/console (gstr/format "x=%s y=%s" (nth (get-in s [:player :direction-vector]) 0)
-                                                (nth (get-in s [:player :direction-vector]) 1)))
-      s))
+  (do (.log js/console (gstr/format "x=%s" (count (get-in s [:bullets])))))
+      s)
 
 
 (defn update-frame
@@ -333,10 +395,13 @@
   (do (reset! game-state
               (update-time-start
                (draw-frame
-                (update-player-position
-                 (update-player-direction
-                  (update-player-rotation-angle
-                   (update-time-delta @game-state)))))))
+        ;;      (debug
+                (update-bullets
+                 (update-player-attack
+                  (update-player-position
+                   (update-player-direction
+                    (update-player-rotation-angle
+                     (update-time-delta @game-state)))))))))
       (.requestAnimationFrame js/window update-frame)))
 
 
