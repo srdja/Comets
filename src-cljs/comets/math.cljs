@@ -24,6 +24,6 @@
     (if (or (= x 0) (= y 0))
       v
       (let [l (.sqrt js/Math (+ (* x x)
-                                (* x x)))]
+                                (* y y)))]
         [(* (/ 1 l) x)
          (* (/ 1 l) y)]))))

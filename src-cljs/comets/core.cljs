@@ -354,7 +354,7 @@
         adj (* -1 (+ ang (/ 3.1415 2)))]      ;; The angle at which the player would be facing the mouse
                                               ;; * -1 flips the direction of the rotation
     (update-in (update-in s [:player :rotation-angle] (fn [] adj))
-               [:player :forward-vector] (fn [] (math/vector-normalize [a b])))))
+               [:player :forward-vector] (fn [] (math/vector-normalize [(* a -1) (* -1 b)])))))
 
 
 (defn update-player-attack
@@ -386,8 +386,8 @@
 
 (defn debug
   [s]
-  (do (.log js/console (gstr/format "x=%s" (count (get-in s [:bullets])))))
-      s)
+  (do (.log js/console (gstr/format "x=%s" (nth (get-in s [:player :forward-vector]) 1)))
+      s))
 
 
 (defn update-frame
@@ -395,7 +395,7 @@
   (do (reset! game-state
               (update-time-start
                (draw-frame
-        ;;      (debug
+;;              (debug
                 (update-bullets
                  (update-player-attack
                   (update-player-position
