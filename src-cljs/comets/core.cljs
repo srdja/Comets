@@ -154,9 +154,25 @@
           (.restore context)))))
 
 
-(defn draw-comet
-  [c comet]
-  ())
+(defn draw-comets
+  [state comets]
+  (doseq [c (:comets state)]
+    (let [cx (get-in c [:position :y])
+          cy (get-in c [:position :x])
+          r  (:radius c)]
+      (if (:is-fragment c)
+        (do (.save context)
+            (.beginPath context)
+            (.arc context (+ cx r) (+ cy r) r 0 (* 2 3.1415) false)
+            (.fill context)
+            (.closePath context)
+            (.restore context))
+        (do (.save context)
+            (.beginPath context)
+            (.arc context (+ cx r) (+ cy r) r 0 (* 2 3.1415) false)
+            (.fill context)
+            (.closePath context)
+            (.restore context))))))
 
 
 (defn draw-rocket
@@ -194,6 +210,7 @@
   (do (.clearRect context 0 0 900 700)
       (draw-player-ship state context)
       (draw-bullets state context)
+      (draw-comets state context)
       (draw-hud state context)
       state))
 
@@ -270,6 +287,7 @@
    :health 100
    :spawn-delay 2500
    :time-before-spawn 0
+   :is-fragment false
    :collision-circle-radius 20})
 
 
