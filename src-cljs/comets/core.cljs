@@ -305,8 +305,23 @@
 ;; ----------------------------------------------------------------------
 
 (defn comet-spawn
-  [state]
-  ())
+  [state is-fragment]
+  (let [rad (if is-fragment
+               (/ (:radius comet) 2)
+               (:radius comet))
+        axi (math/rng-int 2)                      ;; The axis on which the comet is spawned: x=0 y=1
+        pos (if (= axis 0)                        ;; Position on the x or y axis
+              [(math/rng-int 900) (- rad 1)]
+              [(- rad 1) (math/rng-int 700)])
+        dir [(math/rng-float) (math/rng-float)]]
+    (update-in
+     state
+     [:comets]
+     (fn []
+       (conj (:comets state)
+             (assoc comet
+                    :position pos
+                    :direction-vector dir))))))
 
 
 (defn update-comet-position
