@@ -262,11 +262,43 @@
    :collision-circle-radius 2})
 
 
+(def comet ;; when a comet is at 50% of max health it is split
+  {:position {:x 0 :y 0}
+   :direction-vector [0 0]
+   :speed-mod 200
+   :radius 20
+   :health 100
+   :spawn-delay 2500
+   :time-before-spawn 0
+   :collision-circle-radius 20})
+
+
 (def game-state
   (atom {:timer time
          :player player
          :bullets []
+         :comets []
          }))
+
+;; ----------------------------------------------------------------------
+;;
+;;  Comets
+;;
+;; ----------------------------------------------------------------------
+
+(defn comet-spawn
+  [state]
+  ())
+
+
+(defn update-comet-position
+  [comet time-delta]
+  ())
+
+
+(defn update-comets
+  [state]
+  ())
 
 ;; ----------------------------------------------------------------------
 ;;
