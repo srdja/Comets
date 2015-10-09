@@ -283,7 +283,7 @@
      (conj (:bullets state)
            (assoc bullet
                   :position pos
-                  :directin-vector dir)))))
+                  :direction-vector dir)))))
 
 
 (defn update-bullet-position
@@ -369,8 +369,8 @@
         time    (get-in state [:time :delta])]
     (if (and @click-down (<= think 0))
       (update-in (bullet-spawn state
-                               {:x (+ px (* 10 fw-x))   ;; the bullet should spawn at the tip of the ship
-                                :y (+ py (* 10 fw-y))}
+                               {:x (+ px (* -13 fw-x))   ;; the bullet should spawn at the tip of the ship
+                                :y (+ py (* -13 fw-y))}  ;; coordinates are flipped
                                [fw-x fw-y])
                  [:player :time-before-attack]
                  (fn [] delay))
