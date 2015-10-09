@@ -27,3 +27,17 @@
                                 (* y y)))]
         [(* (/ 1 l) x)
          (* (/ 1 l) y)]))))
+
+
+(defn rng-int
+  "Returns a random number from 0 to range -1"
+  [range]
+  (.floor js/Math (* range (.random js/Math))))
+
+
+(defn rng-float
+  []
+  (* (.random js/Math)
+     (if (= 1 (rng-int 2))
+       -1
+        1))
