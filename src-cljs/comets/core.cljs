@@ -164,13 +164,13 @@
         (do (.save context)
             (.beginPath context)
             (.arc context (+ cx r) (+ cy r) r 0 (* 2 3.1415) false)
-            (.fill context)
+            (.stroke context)
             (.closePath context)
             (.restore context))
         (do (.save context)
             (.beginPath context)
             (.arc context (+ cx r) (+ cy r) r 0 (* 2 3.1415) false)
-            (.fill context)
+            (.stroke context)
             (.closePath context)
             (.restore context))))))
 
@@ -310,18 +310,19 @@
                (/ (:radius comet) 2)
                (:radius comet))
         axi (math/rng-int 2)                      ;; The axis on which the comet is spawned: x=0 y=1
-        pos (if (= axis 0)                        ;; Position on the x or y axis
-              [(math/rng-int 900) (- rad 1)]
-              [(- rad 1) (math/rng-int 700)])
+        pos (if (= axi 0)                         ;; Position on the x or y axis
+              {:x (math/rng-int 900) :y (- rad 1)}
+              {:x (- rad 1) :y (math/rng-int 700)})
         dir [(math/rng-float) (math/rng-float)]]
     (update-in
      state
      [:comets]
      (fn []
+       (do (.log js/console (gstr/format "x=%s y=%s" (:x pos) (:y pos)))
        (conj (:comets state)
              (assoc comet
                     :position pos
-                    :direction-vector dir))))))
+                    :direction-vector dir)))))))
 
 
 (defn update-comet-position
@@ -448,6 +449,7 @@
   [s]
   s)
 
+(reset! game-state (comet-spawn @game-state false))
 
 (defn debug
   [s]

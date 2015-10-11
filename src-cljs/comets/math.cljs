@@ -40,4 +40,4 @@
   (* (.random js/Math)
      (if (= 1 (rng-int 2))
        -1
-        1))
+        1)))
