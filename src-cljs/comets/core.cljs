@@ -126,8 +126,8 @@
 
 (defn draw-player-ship
   [state context]
-  (let [px (get-in state [:player :position :x])
-        py (get-in state [:player :position :y])
+  (let [px (get-in state [:player :motion :pos-x])
+        py (get-in state [:player :motion :pos-y])
         angle (get-in state [:player :rotation-angle])]
     (do (.save context)
         (.translate context px py)
@@ -261,15 +261,14 @@
 
 
 (def player
-  {:is-alive true
-   :motion motion
-   :position {:x (/ (:w viewport) 2) :y (/ (:h viewport) 2)}
-   :direction-vector [0 0]
+  {:motion (assoc motion
+                  :pos-x (/ (:w viewport) 2)
+                  :pos-y (/ (:h viewport) 2)
+                  :speed 120)
    :forward-vector [0 0]
    :rotation-angle 0
    :radius 11
    :lives 3
-   :speed-mod 120
    :health 100
    :attack-delay 130
    :time-before-attack 0
@@ -349,11 +348,10 @@
      state
      [:comets]
      (fn []
-       (do (.log js/console (gstr/format "x=%s y=%s" (:x pos) (:y pos)))
        (conj (:comets state)
              (assoc comet
                     :position pos
-                    :direction-vector dir)))))))
+                    :direction-vector dir))))))
 
 
 (defn update-comet-position
@@ -404,22 +402,19 @@
 ;;  (assoc player :))
 
 (defn update-player-position
-  [s]
-  (let [play-x  (get-in s [:player :position :x])
-        play-y  (get-in s [:player :position :y])
-        dir     (get-in s [:player :direction-vector])
-        speed   (get-in s [:player :speed-mod])
-        dt-sec  (/ (get-in s [:time :delta]) 1000)
-        moved-x (* speed dt-sec (nth dir 0))
-        moved-y (* speed dt-sec (nth dir 1))
-        new-x   (+ play-x moved-x)
-        new-y   (+ play-y moved-y)]
-    (update-in s [:player :position] (fn [] {:x new-x :y new-y}))))
+  [state]
+  (let [player (get-in state [:player])
+        motion (get-in player [:motion])
+        radius (get-in player [:radius])
+        time   (get-in state [:time :delta])]
+    (assoc state :player
+           (assoc player :motion
+                  (move motion time radius)))))
 
 
 (defn update-player-direction
-  [s]
-  (update-in s [:player :direction-vector]
+  [state]
+  (update-in state [:player :motion :dir]
              (fn [] (math/vector-normalize
                      (map +
                           (:w @keys-down)
@@ -433,24 +428,24 @@
 
   Direction is based on the position of the mouse sursor. The player ship
   should always facing the cursor"
-  [s]
+  [state]
   (let [mx  (:x @mouse-pos)                   ;; mouse pointer x coordinate
         my  (:y @mouse-pos)                   ;; mouse pointer y coordinate
-        px  (get-in s [:player :position :x]) ;; player position x
-        py  (get-in s [:player :position :y]) ;; player position y
+        px  (get-in state [:player :motion :pos-x]) ;; player position x
+        py  (get-in state [:player :motion :pos-y]) ;; player position y
         a   (- px mx)                         ;; Distance between the mouse and the player along the x axis
         b   (- py my)                         ;; Distance between the mouse and the player along the y axis
         ang (.atan2 js/Math a b)
         adj (* -1 (+ ang (/ 3.1415 2)))]      ;; The angle at which the player would be facing the mouse
                                               ;; * -1 flips the direction of the rotation
-    (update-in (update-in s [:player :rotation-angle] (fn [] adj))
+    (update-in (update-in state [:player :rotation-angle] (fn [] adj))
                [:player :forward-vector] (fn [] (math/vector-normalize [(* a -1) (* -1 b)])))))
 
 
 (defn update-player-attack
   [state]
-  (let [px    (get-in state [:player :position :x])
-        py    (get-in state [:player :position :y])
+  (let [px    (get-in state [:player :motion :pos-x])
+        py    (get-in state [:player :motion :pos-y])
         fw-x  (nth (get-in state [:player :forward-vector]) 0)
         fw-y  (nth (get-in state [:player :forward-vector]) 1)
         delay (get-in state [:player :attack-delay])
@@ -473,7 +468,7 @@
 
 (defn debug
   [s]
-  (do (.log js/console (gstr/format "x=%s" (nth (get-in s [:player :forward-vector]) 1)))
+  (do (.log js/console (gstr/format "x=%s y=%s" (get-in s [:player :motion :pos-x]) (get-in s [:player :motion :pos-y])))
       s))
 
 
