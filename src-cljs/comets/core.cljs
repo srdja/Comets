@@ -328,6 +328,14 @@
             new-y   (+ y moved-y)]
         (assoc m :pos-x new-x :pos-y new-y)))))
 
+
+(defn update-motion
+  [mover time-delta]
+  (let [motion (get-in mover [:motion])
+        radius (get-in mover [:radius])]
+    (assoc mover :motion (move motion time-delta radius))))
+
+
 ;; ----------------------------------------------------------------------
 ;;
 ;;  Comets
@@ -344,24 +352,19 @@
               {:x (math/rng-int (:w viewport)) :y (- rad 1)}
               {:x (- rad 1) :y (math/rng-int (:h viewport))})
         dir [(math/rng-float) (math/rng-float)]]
-    (update-in
-     state
-     [:comets]
-     (fn []
+    (assoc state :commets
        (conj (:comets state)
              (assoc comet
-                    :position pos
-                    :direction-vector dir))))))
-
-
-(defn update-comet-position
-  [comet time-delta]
-  ())
+                    :motion
+                    :pos-x (:x pos)
+                    :pos-y (:y pos)
+                    :speed 300
+                    :dir dir)))))
 
 
 (defn update-comets
   [state]
-  ())
+  (let [time (get-in state [:time :delta])]))
 
 ;; ----------------------------------------------------------------------
 ;;
@@ -376,13 +379,6 @@
     (assoc state :bullets bullets)))
 
 
-(defn update-bullet-position
-  [bullet time-delta]
-  (let [motion  (get-in bullet [:motion])
-        radius  (get-in bullet [:radius])]
-    (assoc bullet :motion (move motion time-delta radius))))
-
-
 (defn update-bullets
   [state]
   (let [time (get-in state [:time :delta])]
@@ -390,26 +386,18 @@
      state
      [:bullets]
      (fn [] (into []
-                  (map (fn [b] (update-bullet-position b time)) (:bullets state)))))))
+                  (map (fn [b] (update-motion b time)) (:bullets state)))))))
 ;; ----------------------------------------------------------------------
 ;;
 ;;  Player stuff
 ;;
 ;; ----------------------------------------------------------------------
 
-;;(defn player-spawn
-;;  [state]
-;;  (assoc player :))
-
 (defn update-player-position
   [state]
   (let [player (get-in state [:player])
-        motion (get-in player [:motion])
-        radius (get-in player [:radius])
         time   (get-in state [:time :delta])]
-    (assoc state :player
-           (assoc player :motion
-                  (move motion time radius)))))
+    (assoc state :player (update-motion player time))))
 
 
 (defn update-player-direction
