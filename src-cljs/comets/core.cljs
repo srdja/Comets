@@ -297,15 +297,9 @@
 
 
 (def particle
-  {:motion
+  {:motion motion
    :ttl 1000
    :radius 1})
-
-
-(def explosion
-  {:pos-x 0
-   :pox-y 0
-   :particles []})
 
 
 (def game-state
@@ -352,6 +346,11 @@
     (assoc mover :motion (move motion time-delta radius))))
 
 
+(defn update-ttl
+  [expierable time]
+  (let [t (- (:ttl expierable) time)]
+    (assoc expierable :ttl t)))
+
 ;; ----------------------------------------------------------------------
 ;;  Explosion
 ;; ----------------------------------------------------------------------
@@ -368,8 +367,24 @@
 
 
 (defn explosion-spawn
-  [state x y n-particles]
-  (into [] (take n-particles (repeat (particle-spawn x y)))))
+  [state x y n]
+  (let [explosions (:explosions state)
+        particles  (into [] (take n (repeat (particle-spawn x y))))]
+    (assoc state :explosions (conj explosions particles))))
+
+
+(defn update-particles
+  [particles time]
+  (let [remaining-particles (remove (fn [p] (<= (:ttl p) 0)) particles)]
+    (map (fn [p] (update-motion (update-ttl p time) time)))))
+
+
+(defn update-explosions
+  [state]
+  (let [time (get-in state [:time :delta])
+        exps (get-in state [:explosions])]
+    (assoc state :explosions
+           (into [] (map (fn [e] (update-particles e time)) exps)))))
 
 ;; ----------------------------------------------------------------------
 ;;  Comets
@@ -413,11 +428,6 @@
         bullets (conj (:bullets state) bullet)]
     (assoc state :bullets bullets)))
 
-
-(defn update-ttl
-  [expierable time]
-  (let [t (- (:ttl expierable) time)]
-    (assoc expierable :ttl t)))
 
 
 (defn update-bullets
