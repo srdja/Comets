@@ -353,9 +353,26 @@
 
 
 ;; ----------------------------------------------------------------------
-;;
+;;  Explosion
+;; ----------------------------------------------------------------------
+
+(defn particle-spawn
+  [x y]
+  (let [m (assoc motion
+                 :pos-x x
+                 :pos-y y
+                 :speed (math/rng-int 600)
+                 :dir (math/vector-normalize [(math/rng-float) (math/rng-float)]))
+        ttl (math/rng-int 1000)]
+    (assoc particle :motion m :ttl ttl)))
+
+
+(defn explosion-spawn
+  [state x y n-particles]
+  (into [] (take n-particles (repeat (particle-spawn x y)))))
+
+;; ----------------------------------------------------------------------
 ;;  Comets
-;;
 ;; ----------------------------------------------------------------------
 
 (defn comet-spawn
