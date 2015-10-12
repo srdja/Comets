@@ -189,7 +189,7 @@
 
 
 (defn draw-explosion
-  [c exp]
+  [state context]
   ())
 
 
@@ -296,11 +296,24 @@
    :collision-circle-radius 40})
 
 
+(def particle
+  {:motion
+   :ttl 1000
+   :radius 1})
+
+
+(def explosion
+  {:pos-x 0
+   :pox-y 0
+   :particles []})
+
+
 (def game-state
   (atom {:timer time
          :player player
          :bullets []
-         :comets []}))
+         :comets []
+         :explosions []}))
 
 
 (defn move
