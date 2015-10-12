@@ -143,18 +143,29 @@
         (.restore context))))
 
 
-(defn draw-bullets
-  [state context]
-  (doseq [b (:bullets state)]
-    (let [bx (get-in b [:motion :pos-x])
-          by (get-in b [:motion :pos-y])
-          r  (:radius b)]
+(defn draw-particles
+  [particles context]
+  (doseq [p particles]
+    (let [px (get-in p [:motion :pos-x])
+          py (get-in p [:motion :pos-y])
+          r  (:radius p)]
       (do (.save context)
           (.beginPath context)
-          (.arc context (+ bx r) (+ by r) r 0 (* 2 3.1415) false)
+          (.arc context (+ px r) (+ py r) r 0 (* 2 3.1415) false)
           (.fill context)
           (.closePath context)
           (.restore context)))))
+
+
+(defn draw-bullets
+  [state context]
+  (draw-particles (:bullets state) context))
+
+
+(defn draw-explosions
+  [state context]
+  (doseq [e (:explosions state)]
+    (draw-particles e context)))
 
 
 (defn draw-comets
@@ -188,11 +199,6 @@
             (.restore context))))))
 
 
-(defn draw-explosion
-  [state context]
-  ())
-
-
 (defn draw-hud
   [state context]
   (let [score (get-in state [:player :score])
@@ -218,6 +224,7 @@
   (do (.clearRect context 0 0 (:w viewport) (:h viewport))
       (draw-player-ship state context)
       (draw-bullets state context)
+      (draw-explosions state context)
       (draw-comets state context)
       (draw-hud state context)
       state))
