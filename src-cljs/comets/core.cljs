@@ -146,8 +146,8 @@
 (defn draw-bullets
   [state context]
   (doseq [b (:bullets state)]
-    (let [bx (get-in b [:position :x])
-          by (get-in b [:position :y])
+    (let [bx (get-in b [:motion :pos-x])
+          by (get-in b [:motion :pos-y])
           r  (:radius b)]
       (do (.save context)
           (.beginPath context)
@@ -279,10 +279,7 @@
 
 (def bullet
   {:motion motion
-   :position {:x 0 :y 0}
-   :direction-vector [0 0]
    :damage 10
-   :speed-mod 340
    :radius 2
    :time-to-live 5               ;; in seconds
    :collision-circle-radius 2})
@@ -308,28 +305,28 @@
   "Updates the motion <m> for time <t> and wraps the position
    if it leaves the viewport."
   [m t r]
-  (let [pos-x (:pos-x m)
-        pos-y (:pos-y m)
-        speed (* (:speed m) (/ t 1000))
-        dir   (:direction m)]
+  (let [x   (:pos-x m)
+        y   (:pos-y m)
+        s   (* (:speed m) (/ t 1000))
+        dir (:dir m)]
     (cond
-      (and (< x (- 0 r))                    ;; Object is to the left of the viewport and is
-           (< (nth dir 0) 0))               ;; moving away from it
-      (assoc m :pos-x (+ (:w viewport) r))  ;; right
-      (and (> x (+ w r))
-           (> (nth dir 0) 0))
-      (assoc m :pos-x (- (:w viewport) r))  ;; above
-      (and (< y (- 0 r))
-           (< (nth dir 1) 0))
-      (assoc m :pos-y (+ (:h viewport) r))  ;; beneath
-      (and (> y (+ h r))
-           (> (nth dir 1) 0))
-      (assoc m :pos-y (- (:h viewport) r))
+      (and (<= x (- 0 r))                   ;; Object is to the left of the viewport and is
+           (<= (nth dir 0) 0))              ;; moving away from it
+      (assoc m :pos-x (+ (:w viewport) r))
+      (and (>= x (+ (:w viewport) r))       ;; right
+           (>= (nth dir 0) 0))
+      (assoc m :pos-x (- 0 r))
+      (and (<= y (- 0 r))                   ;; above
+           (<= (nth dir 1) 0))
+      (assoc m :pos-y (+ (:h viewport) r))
+      (and (>= y (+ (:h viewport) r))       ;; beneath
+           (>= (nth dir 1) 0))
+      (assoc m :pos-y (- 0 r))
       :else
-      (let [moved-x (* speed (nth dir 0))
-            moved-y (* speed (nth dir 1))
-            new-x   (+ pos-x moved-x)
-            new-y   (+ pos-y moved-y)]
+      (let [moved-x (* s (nth dir 0))
+            moved-y (* s (nth dir 1))
+            new-x   (+ x moved-x)
+            new-y   (+ y moved-y)]
         (assoc m :pos-x new-x :pos-y new-y)))))
 
 ;; ----------------------------------------------------------------------
@@ -375,28 +372,17 @@
 ;; ----------------------------------------------------------------------
 
 (defn bullet-spawn
-  [state pos dir]
-  (update-in
-   state
-   [:bullets]
-   (fn []
-     (conj (:bullets state)
-           (assoc bullet
-                  :position pos
-                  :direction-vector dir)))))
+  [state motion]
+  (let [bullet  (assoc bullet :motion motion)
+        bullets (conj (:bullets state) bullet)]
+    (assoc state :bullets bullets)))
 
 
 (defn update-bullet-position
   [bullet time-delta]
-  (let [x       (get-in bullet [:position :x])
-        y       (get-in bullet [:position :y])
-        speed   (get-in bullet [:speed-mod])
-        dir     (get-in bullet [:direction-vector])
-        moved-x (* speed (/ time-delta 1000) (nth dir 0))
-        moved-y (* speed (/ time-delta 1000) (nth dir 1))
-        new-x   (+ x moved-x)
-        new-y   (+ y moved-y)]
-    (update-in bullet [:position] (fn [] {:x new-x :y new-y}))))
+  (let [motion  (get-in bullet [:motion])
+        radius  (get-in bullet [:radius])]
+    (assoc bullet :motion (move motion time-delta radius))))
 
 
 (defn update-bullets
@@ -406,7 +392,7 @@
      state
      [:bullets]
      (fn [] (into []
-                  (map (fn [m] (update-bullet-position m time)) (:bullets state)))))))
+                  (map (fn [b] (update-bullet-position b time)) (:bullets state)))))))
 ;; ----------------------------------------------------------------------
 ;;
 ;;  Player stuff
@@ -463,29 +449,25 @@
 
 (defn update-player-attack
   [state]
-  (let [bullets (:bullets state)
-        px      (get-in state [:player :position :x])
-        py      (get-in state [:player :position :y])
-        fw-x    (nth (get-in state [:player :forward-vector]) 0)
-        fw-y    (nth (get-in state [:player :forward-vector]) 1)
-        delay   (get-in state [:player :attack-delay])
-        think   (get-in state [:player :time-before-attack])
-        time    (get-in state [:time :delta])]
+  (let [px    (get-in state [:player :position :x])
+        py    (get-in state [:player :position :y])
+        fw-x  (nth (get-in state [:player :forward-vector]) 0)
+        fw-y  (nth (get-in state [:player :forward-vector]) 1)
+        delay (get-in state [:player :attack-delay])
+        think (get-in state [:player :time-before-attack])
+        time  (get-in state [:time :delta])]
     (if (and @click-down (<= think 0))
-      (update-in (bullet-spawn state
-                               {:x (+ px (* 11 fw-x))   ;; the bullet should spawn at the tip of the ship
-                                :y (+ py (* 11 fw-y))}  ;; coordinates are flipped
-                               [fw-x fw-y])
+      (update-in (bullet-spawn state (assoc motion
+                                            :pos-x (+ px (* 11 fw-x))
+                                            :pos-y (+ py (* 11 fw-y))
+                                            :dir   [fw-x fw-y]
+                                            :speed 300))
                  [:player :time-before-attack]
                  (fn [] delay))
       (update-in state
                  [:player :time-before-attack]
                  (fn [] (- think time))))))
 
-
-(defn new-game
-  [s]
-  s)
 
 (reset! game-state (comet-spawn @game-state false))
 
