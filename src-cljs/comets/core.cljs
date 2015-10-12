@@ -35,7 +35,7 @@
 (def context (.getContext surface "2d"))
 
 ;;
-(def viewport {:w 900 :h 700})
+(def viewport {:w 900 :h 600})
 
 ;; ----------------------------------------------------------------------
 ;;
@@ -193,7 +193,7 @@
   (let [score (get-in state [:player :score])
         lives (get-in state [:player :lives])]
     (do (.beginPath context)
-        (.rect context 0 0 900 700)
+        (.rect context 0 0 (:w viewport) (:h viewport))
         (aset context "lineWidth" 2)
         (aset context "strokeStyle" "white")
         (.stroke context)
@@ -210,7 +210,7 @@
 
 (defn draw-frame
   [state]
-  (do (.clearRect context 0 0 900 700)
+  (do (.clearRect context 0 0 (:w viewport) (:h viewport))
       (draw-player-ship state context)
       (draw-bullets state context)
       (draw-comets state context)
@@ -263,7 +263,7 @@
 (def player
   {:is-alive true
    :motion motion
-   :position {:x (/ 900 2) :y (/ 700 2)}
+   :position {:x (/ (:w viewport) 2) :y (/ (:h viewport) 2)}
    :direction-vector [0 0]
    :forward-vector [0 0]
    :rotation-angle 0
@@ -345,8 +345,8 @@
                (:radius comet))
         axi (math/rng-int 2)                      ;; The axis on which the comet is spawned: x=0 y=1
         pos (if (= axi 0)                         ;; Position on the x or y axis
-              {:x (math/rng-int 900) :y (- rad 1)}
-              {:x (- rad 1) :y (math/rng-int 700)})
+              {:x (math/rng-int (:w viewport)) :y (- rad 1)}
+              {:x (- rad 1) :y (math/rng-int (:h viewport))})
         dir [(math/rng-float) (math/rng-float)]]
     (update-in
      state
