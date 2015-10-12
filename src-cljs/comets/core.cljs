@@ -34,6 +34,9 @@
 ;; Drawing context
 (def context (.getContext surface "2d"))
 
+;;
+(def viewport {:w 900 :h 700})
+
 ;; ----------------------------------------------------------------------
 ;;
 ;;  Input stuff
@@ -244,22 +247,27 @@
 ;; ----------------------------------------------------------------------
 
 
+(def motion
+  {:pos-x 0    ;; position on the x axis
+   :pos-y 0    ;; position on the y axis
+   :dir [0 0]  ;; normalized direction vector
+   :speed 0})  ;; speed - "dir" units per second
+
+
 (def time
   {:start (.now js/Date)
    :delta 0
    :current 0})
 
 
-(def animation
-  {:duration 0})
-
-
 (def player
   {:is-alive true
+   :motion motion
    :position {:x (/ 900 2) :y (/ 700 2)}
    :direction-vector [0 0]
    :forward-vector [0 0]
    :rotation-angle 0
+   :radius 11
    :lives 3
    :speed-mod 120
    :health 100
@@ -270,7 +278,8 @@
 
 
 (def bullet
-  {:position {:x 0 :y 0}
+  {:motion motion
+   :position {:x 0 :y 0}
    :direction-vector [0 0]
    :damage 10
    :speed-mod 340
@@ -280,14 +289,11 @@
 
 
 (def comet ;; when a comet is at 50% of max health it is split
-  {:position {:x 0 :y 0}
-   :direction-vector [0 0]
-   :speed-mod 200
+  {:motion motion
    :radius 20
    :health 100
    :spawn-delay 2500
    :time-before-spawn 0
-   :is-fragment false
    :collision-circle-radius 20})
 
 
@@ -295,8 +301,36 @@
   (atom {:timer time
          :player player
          :bullets []
-         :comets []
-         }))
+         :comets []}))
+
+
+(defn move
+  "Updates the motion <m> for time <t> and wraps the position
+   if it leaves the viewport."
+  [m t r]
+  (let [pos-x (:pos-x m)
+        pos-y (:pos-y m)
+        speed (* (:speed m) (/ t 1000))
+        dir   (:direction m)]
+    (cond
+      (and (< x (- 0 r))                    ;; Object is to the left of the viewport and is
+           (< (nth dir 0) 0))               ;; moving away from it
+      (assoc m :pos-x (+ (:w viewport) r))  ;; right
+      (and (> x (+ w r))
+           (> (nth dir 0) 0))
+      (assoc m :pos-x (- (:w viewport) r))  ;; above
+      (and (< y (- 0 r))
+           (< (nth dir 1) 0))
+      (assoc m :pos-y (+ (:h viewport) r))  ;; beneath
+      (and (> y (+ h r))
+           (> (nth dir 1) 0))
+      (assoc m :pos-y (- (:h viewport) r))
+      :else
+      (let [moved-x (* speed (nth dir 0))
+            moved-y (* speed (nth dir 1))
+            new-x   (+ pos-x moved-x)
+            new-y   (+ pos-y moved-y)]
+        (assoc m :pos-x new-x :pos-y new-y)))))
 
 ;; ----------------------------------------------------------------------
 ;;
@@ -378,6 +412,10 @@
 ;;  Player stuff
 ;;
 ;; ----------------------------------------------------------------------
+
+;;(defn player-spawn
+;;  [state]
+;;  (assoc player :))
 
 (defn update-player-position
   [s]
