@@ -366,14 +366,12 @@
   [state]
   (let [time (get-in state [:time :delta])]
     (assoc state
-           :bullets (into []
-                          (map (fn [c] (update-motion c time))
-                               (:comets state))))))
+           :comets (into []
+                         (map (fn [c] (update-motion c time))
+                              (:comets state))))))
 
 ;; ----------------------------------------------------------------------
-;;
 ;;  Bullets
-;;
 ;; ----------------------------------------------------------------------
 
 (defn bullet-spawn
@@ -386,15 +384,13 @@
 (defn update-bullets
   [state]
   (let [time (get-in state [:time :delta])]
-    (update-in
-     state
-     [:bullets]
-     (fn [] (into []
-                  (map (fn [b] (update-motion b time)) (:bullets state)))))))
+    (assoc state
+           :bullets (into []
+                          (map (fn [b] (update-motion b time))
+                               (:bullets state))))))
+
 ;; ----------------------------------------------------------------------
-;;
 ;;  Player stuff
-;;
 ;; ----------------------------------------------------------------------
 
 (defn update-player-position
