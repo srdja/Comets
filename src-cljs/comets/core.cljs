@@ -273,7 +273,7 @@
   {:motion motion
    :damage 10
    :radius 2
-   :time-to-live 5               ;; in seconds
+   :ttl 3000               ;; time to live in milisecods
    :collision-circle-radius 2})
 
 
@@ -344,13 +344,13 @@
         pos (if (= axi 0)                         ;; Position on the x or y axis
               {:x (math/rng-int (:w viewport)) :y (- rad 1)}
               {:x (- rad 1) :y (math/rng-int (:h viewport))})
-        dir [(math/rng-float) (math/rng-float)]]
+        dir (math/vector-normalize [(math/rng-float) (math/rng-float)])]
     (assoc state :comets
        (conj (:comets state)
              (assoc comet
                     :motion (assoc motion :pos-x (:x pos)
                                           :pos-y (:y pos)
-                                          :speed 300
+                                          :speed 100
                                           :dir dir))))))
 
 
@@ -373,13 +373,21 @@
     (assoc state :bullets bullets)))
 
 
+(defn update-ttl
+  [expierable time]
+  (let [t (- (:ttl expierable) time)]
+    (assoc expierable :ttl t)))
+
+
 (defn update-bullets
   [state]
-  (let [time (get-in state [:time :delta])]
+  (let [time (get-in state [:time :delta])
+        bullets (:bullets state)
+        remaining-bullets (remove (fn [b] (<= (:ttl b) 0)) bullets)]
     (assoc state
            :bullets (into []
-                          (map (fn [b] (update-motion b time))
-                               (:bullets state))))))
+                          (map (fn [b] (update-motion (update-ttl b time) time))
+                               remaining-bullets)))))
 
 ;; ----------------------------------------------------------------------
 ;;  Player stuff
@@ -436,7 +444,7 @@
                                             :pos-x (+ px (* 11 fw-x))
                                             :pos-y (+ py (* 11 fw-y))
                                             :dir   [fw-x fw-y]
-                                            :speed 300))
+                                            :speed 400))
                  [:player :time-before-attack]
                  (fn [] delay))
       (update-in state
@@ -457,13 +465,14 @@
   (do (reset! game-state
               (update-time-start
                (draw-frame
-;;              (debug
+                ;;              (debug
+                (update-comets
                 (update-bullets
                  (update-player-attack
                   (update-player-position
                    (update-player-direction
                     (update-player-rotation-angle
-                     (update-time-delta @game-state)))))))))
+                     (update-time-delta @game-state))))))))))
       (.requestAnimationFrame js/window update-frame)))
 
 
