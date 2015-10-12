@@ -364,7 +364,11 @@
 
 (defn update-comets
   [state]
-  (let [time (get-in state [:time :delta])]))
+  (let [time (get-in state [:time :delta])]
+    (assoc state
+           :bullets (into []
+                          (map (fn [c] (update-motion c time))
+                               (:comets state))))))
 
 ;; ----------------------------------------------------------------------
 ;;
