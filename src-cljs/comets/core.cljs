@@ -172,9 +172,19 @@
             (.restore context))
         (do (.save context)
             (.beginPath context)
-            (.arc context (+ cx r) (+ cy r) r 0 (* 2 3.1415) false)
+            (.moveTo context cx (- cy r)) ;; base
+            (.lineTo context (+ cx (* r 0.2)) (- cy (* r 0.4)))
+            (.lineTo context (+ cx (* r 0.8)) (- cy (* r 0.8)))
+            (.lineTo context (+ cx r) cy) ;; base
+            (.lineTo context (+ cx (* r 0.6)) (+ cy (* r 0.1)))
+            (.lineTo context (+ cx (* r 0.8)) (+ cy (* r 0.9)))
+            (.lineTo context (+ cx (* r 0.2)) (+ cy (* r 0.8)))
+            (.lineTo context cx (+ cy r)) ;; base
+            (.lineTo context (- cx (* r 0.7)) (+ cy (* r 0.5)))
+            (.lineTo context (- cx (* r 0.6)) (+ cy (* r 0.2)))
+            (.lineTo context (- cx r) cy) ;; base
+            (.lineTo context cx (- cy r)) ;; base
             (.stroke context)
-            (.closePath context)
             (.restore context))))))
 
 
@@ -279,11 +289,11 @@
 
 (def comet ;; when a comet is at 50% of max health it is split
   {:motion motion
-   :radius 20
+   :radius 40
    :health 100
    :spawn-delay 2500
    :time-before-spawn 0
-   :collision-circle-radius 20})
+   :collision-circle-radius 40})
 
 
 (def game-state
@@ -351,7 +361,8 @@
                     :motion (assoc motion :pos-x (:x pos)
                                           :pos-y (:y pos)
                                           :speed 100
-                                          :dir dir))))))
+                                          :dir dir)
+                    :radius rad)))))
 
 
 (defn update-comets
