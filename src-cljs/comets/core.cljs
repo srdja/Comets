@@ -160,8 +160,8 @@
 (defn draw-comets
   [state comets]
   (doseq [c (:comets state)]
-    (let [cx (get-in c [:position :y])
-          cy (get-in c [:position :x])
+    (let [cx (get-in c [:motion :pos-x])
+          cy (get-in c [:motion :pos-y])
           r  (:radius c)]
       (if (:is-fragment c)
         (do (.save context)
@@ -176,11 +176,6 @@
             (.stroke context)
             (.closePath context)
             (.restore context))))))
-
-
-(defn draw-rocket
-  [c rocket]
-  ())
 
 
 (defn draw-explosion
@@ -218,9 +213,7 @@
       state))
 
 ;; ----------------------------------------------------------------------
-;;
 ;;  Timing functions
-;;
 ;; ----------------------------------------------------------------------
 
 (defn update-time-delta
@@ -352,14 +345,13 @@
               {:x (math/rng-int (:w viewport)) :y (- rad 1)}
               {:x (- rad 1) :y (math/rng-int (:h viewport))})
         dir [(math/rng-float) (math/rng-float)]]
-    (assoc state :commets
+    (assoc state :comets
        (conj (:comets state)
              (assoc comet
-                    :motion
-                    :pos-x (:x pos)
-                    :pos-y (:y pos)
-                    :speed 300
-                    :dir dir)))))
+                    :motion (assoc motion :pos-x (:x pos)
+                                          :pos-y (:y pos)
+                                          :speed 300
+                                          :dir dir))))))
 
 
 (defn update-comets
