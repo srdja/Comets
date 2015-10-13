@@ -144,13 +144,14 @@
 
 
 (defn draw-particles
-  [particles context]
+  [particles context color]
   (doseq [p particles]
     (let [px (get-in p [:motion :pos-x])
           py (get-in p [:motion :pos-y])
           r  (:radius p)]
       (do (.save context)
           (.beginPath context)
+          (aset context "fillStyle" color)
           (.arc context (+ px r) (+ py r) r 0 (* 2 3.1415) false)
           (.fill context)
           (.closePath context)
@@ -159,13 +160,13 @@
 
 (defn draw-bullets
   [state context]
-  (draw-particles (:bullets state) context))
+  (draw-particles (:bullets state) context "#81F7D8"))
 
 
 (defn draw-explosions
   [state context]
   (doseq [e (:explosions state)]
-    (draw-particles e context)))
+    (draw-particles e context "white")))
 
 
 (defn draw-comets
@@ -305,7 +306,7 @@
 
 (def particle
   {:motion motion
-   :ttl 1000
+   :ttl 0
    :radius 1})
 
 
@@ -375,26 +376,39 @@
 
 (defn explosion-spawn
   [state x y n]
-  (let [explosions (:explosions state)
-        particles  (into [] (take n (repeat (particle-spawn x y))))]
-    (assoc state :explosions (conj explosions particles))))
+  (assoc state
+         :explosions (conj (:explosions state)
+                           ;; (vec (repeat n (particle-spawn x y))))))  ;; for some reason this wont work
+                           [(particle-spawn x y) (particle-spawn x y) (particle-spawn x y)
+                            (particle-spawn x y) (particle-spawn x y) (particle-spawn x y)
+                            (particle-spawn x y) (particle-spawn x y) (particle-spawn x y)
+                            (particle-spawn x y) (particle-spawn x y) (particle-spawn x y)
+                            (particle-spawn x y) (particle-spawn x y) (particle-spawn x y)
+                            (particle-spawn x y) (particle-spawn x y) (particle-spawn x y)
+                            (particle-spawn x y) (particle-spawn x y) (particle-spawn x y)
+                            (particle-spawn x y) (particle-spawn x y) (particle-spawn x y)
+                            (particle-spawn x y) (particle-spawn x y) (particle-spawn x y)])))
 
 
 (defn update-particles
   [particles time]
-  (let [remaining-particles (remove (fn [p] (<= (:ttl p) 0)) particles)]
-    (map (fn [p] (update-motion (update-ttl p time) time)))))
+  (let [remaining-particles (doall (remove (fn [p] (<= (:ttl p) 0)) particles))]
+    (into
+     []
+     (map (fn [p] (update-motion (update-ttl p time) time)) remaining-particles))))
 
 
 (defn update-explosions
   [state]
-  (let [time (get-in state [:time :delta])
-        exps (get-in state [:explosions])]
-    (assoc state :explosions
-           (into [] (map (fn [e] (update-particles e time)) exps)))))
+  (let [time  (get-in state [:time :delta])
+        exps  (get-in state [:explosions])
+        u-exp (into [] (map (fn [e] (update-particles e time)) exps))
+        r-exp (into [] (remove (fn [e] (empty? e)) u-exp))]
+    (assoc state :explosions r-exp)))
+
 
 ;; ----------------------------------------------------------------------
-;;  Comets
+;;  comets
 ;; ----------------------------------------------------------------------
 
 (defn comet-spawn
@@ -402,8 +416,8 @@
   (let [rad (if is-fragment
                (/ (:radius comet) 2)
                (:radius comet))
-        axi (math/rng-int 2)                      ;; The axis on which the comet is spawned: x=0 y=1
-        pos (if (= axi 0)                         ;; Position on the x or y axis
+        axi (math/rng-int 2)                      ;; the axis on which the comet is spawned: x=0 y=1
+        pos (if (= axi 0)                         ;; position on the x or y axis
               {:x (math/rng-int (:w viewport)) :y (- rad 1)}
               {:x (- rad 1) :y (math/rng-int (:h viewport))})
         dir (math/vector-normalize [(math/rng-float) (math/rng-float)])]
@@ -426,15 +440,15 @@
                               (:comets state))))))
 
 ;; ----------------------------------------------------------------------
-;;  Bullets
+;;  bullets
 ;; ----------------------------------------------------------------------
 
 (defn bullet-spawn
   [state motion]
   (let [bullet  (assoc bullet :motion motion)
-        bullets (conj (:bullets state) bullet)]
-    (assoc state :bullets bullets)))
-
+        bullets (conj (:bullets state) bullet)
+        exp     (explosion-spawn state 400 300 20)]
+    (assoc exp :bullets bullets)))
 
 
 (defn update-bullets
@@ -448,7 +462,7 @@
                                remaining-bullets)))))
 
 ;; ----------------------------------------------------------------------
-;;  Player stuff
+;;  player stuff
 ;; ----------------------------------------------------------------------
 
 (defn update-player-position
@@ -470,19 +484,19 @@
 
 
 (defn update-player-rotation-angle
-  "Updates the rotation-angle of the ship and the forward-vector.
+  "updates the rotation-angle of the ship and the forward-vector.
 
-  Direction is based on the position of the mouse sursor. The player ship
+  direction is based on the position of the mouse sursor. the player ship
   should always facing the cursor"
   [state]
   (let [mx  (:x @mouse-pos)                   ;; mouse pointer x coordinate
         my  (:y @mouse-pos)                   ;; mouse pointer y coordinate
         px  (get-in state [:player :motion :pos-x]) ;; player position x
         py  (get-in state [:player :motion :pos-y]) ;; player position y
-        a   (- px mx)                         ;; Distance between the mouse and the player along the x axis
-        b   (- py my)                         ;; Distance between the mouse and the player along the y axis
+        a   (- px mx)                         ;; distance between the mouse and the player along the x axis
+        b   (- py my)                         ;; distance between the mouse and the player along the y axis
         ang (.atan2 js/Math a b)
-        adj (* -1 (+ ang (/ 3.1415 2)))]      ;; The angle at which the player would be facing the mouse
+        adj (* -1 (+ ang (/ 3.1415 2)))]      ;; the angle at which the player would be facing the mouse
                                               ;; * -1 flips the direction of the rotation
     (update-in (update-in state [:player :rotation-angle] (fn [] adj))
                [:player :forward-vector] (fn [] (math/vector-normalize [(* a -1) (* -1 b)])))))
@@ -512,25 +526,20 @@
 
 (reset! game-state (comet-spawn @game-state false))
 
-(defn debug
-  [s]
-  (do (.log js/console (gstr/format "x=%s y=%s" (get-in s [:player :motion :pos-x]) (get-in s [:player :motion :pos-y])))
-      s))
-
 
 (defn update-frame
   []
   (do (reset! game-state
               (update-time-start
                (draw-frame
-                ;;              (debug
-                (update-comets
-                (update-bullets
-                 (update-player-attack
-                  (update-player-position
-                   (update-player-direction
-                    (update-player-rotation-angle
-                     (update-time-delta @game-state))))))))))
+                (update-explosions
+                 (update-comets
+                  (update-bullets
+                   (update-player-attack
+                    (update-player-position
+                     (update-player-direction
+                      (update-player-rotation-angle
+                       (update-time-delta @game-state)))))))))))
       (.requestAnimationFrame js/window update-frame)))
 
 
