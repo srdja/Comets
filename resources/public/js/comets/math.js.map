@@ -1,9 +1,10 @@
 {"version":3,
  "file":"/home/srdja/src/comets/resources/public/js/comets/math.js",
  "sources":["math.cljs"],
- "lineCount":7,
+ "lineCount":18,
  "mappings":
- ";AAiBA;;AAEA,+BAAA,8BAAA,7DAAMA,0DACHC,GACD,qHAAA,AAAA,jHAAMC,IAAE,0BAAA,1BAACC,wBAAIF,WACPG,IAAE,0BAAA,1BAACD,wBAAIF,WACPI,IAAE,AAAOC,UAAQ,CAAG,CAAGJ,IAAEA,KACL,CAAGE,IAAEA,+FAC5B,CAAG,CAAA,MAAOC,KAAGH,GACb,CAAG,CAAA,MAAOG,KAAGD",
+ ";AAiBA;;AAEA,+BAAA,8BAAA,7DAAMA,0DACHC,GACD,8EAAA,1EAAMC,IAAE,0BAAA,1BAACC,wBAAIF,WACPG,IAAE,0BAAA,1BAACD,wBAAIF,OACX,GAAI,CAAI,2BAAA,3BAACI,yBAAEH,YAAK,2BAAA,3BAACG,yBAAED;CACjBH;;CACA,uCAAA,AAAA,nCAAMK,IAAE,AAAOC,UAAQ,CAAG,CAAGL,IAAEA,KACL,CAAGE,IAAEA,+FAC5B,CAAG,CAAA,MAAKE,KAAGJ,GACX,CAAG,CAAA,MAAKI,KAAGF;;;AAGpB;;;sBAAA,yBAAA,/CAAMI,wCAEHC,OACD,OAAQF,WAAQ,CAAGE,QAAM,AAASF;;AAGpC,wBAAA,sBAAA,9CAAMG,8CAEJ,QAAG,AAASH,gBACT,oEAAA,KAAA,vEAAI,yBAAA,zBAACF,6BAAI,8BAAA,9BAACG",
  "names":
- ["comets.math/vector-normalize", "v", "x", "cljs.core/nth", "y", "l",
-  "js/Math"]}
+ ["comets.math/vector-normalize", "v", "x", "cljs.core/nth", "y",
+  "cljs.core/=", "l", "js/Math", "comets.math/rng-int", "range",
+  "comets.math/rng-float"]}

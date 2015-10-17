@@ -20,8 +20,24 @@
 (defn vector-normalize
   [v]
   (let [x (nth v 0)
-        y (nth v 1)
-        l (.sqrt js/Math (+ (* x x)
-                            (* y y)))]
-    [(* (/ 1.0 l) x)
-     (* (/ 1.0 l) y)]))
+        y (nth v 1)]
+    (if (or (= x 0) (= y 0))
+      v
+      (let [l (.sqrt js/Math (+ (* x x)
+                                (* y y)))]
+        [(* (/ 1 l) x)
+         (* (/ 1 l) y)]))))
+
+
+(defn rng-int
+  "Returns a random number from 0 to range -1"
+  [range]
+  (.floor js/Math (* range (.random js/Math))))
+
+
+(defn rng-float
+  []
+  (* (.random js/Math)
+     (if (= 1 (rng-int 2))
+       -1
+        1)))
