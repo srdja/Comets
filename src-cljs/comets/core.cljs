@@ -206,13 +206,16 @@
         lives (get-in state [:player :lives])]
     (do (.beginPath context)
         (.rect context 0 0 (:w viewport) (:h viewport))
-        (aset context "lineWidth" 2)
+        (aset context "lineWidth" 1)
         (aset context "strokeStyle" "white")
         (.stroke context)
-        (aset context "font" "20px Sans")
+        (aset context "font" "20px Share Tech Mono")
         (aset context "fillStyle" "white")
-        (.fillText context (gstr/format "score: %s" score) 30 30)
-        (.fillText context (gstr/format "lives: %s" lives) 30 55))))
+        (.fillText context (gstr/format "score: %s" score) 15 30)
+        (.fillText context (gstr/format "lives: %s" lives) 15 55)
+        (aset context "font" "8px Sans")
+        (aset context "fillStyle" "white")
+        (.fillText context (gstr/format "Moving around (W,A,S,D) / Aiming (Mouse pointer) / Shooting (Left click)") 15 (- (:h viewport) 10)))))
 
 
 (defn draw-alien-ship
@@ -319,32 +322,32 @@
 
 
 (defn move
-  "Updates the motion <m> for time <t> and wraps the position
+  "Updates the motion for time and wraps the position
    if it leaves the viewport."
-  [m t r]
-  (let [x   (:pos-x m)
-        y   (:pos-y m)
-        s   (* (:speed m) (/ t 1000))
-        dir (:dir m)]
+  [motion time radius]
+  (let [x   (:pos-x motion)
+        y   (:pos-y motion)
+        s   (* (:speed motion) (/ time 1000))
+        dir (:dir motion)]
     (cond
-      (and (<= x (- 0 r))                   ;; Object is to the left of the viewport and is
-           (<= (nth dir 0) 0))              ;; moving away from it
-      (assoc m :pos-x (+ (:w viewport) r))
-      (and (>= x (+ (:w viewport) r))       ;; right
+      (and (<= x (- 0 radius))                   ;; Object is to the left of the viewport and is
+           (<= (nth dir 0) 0))                   ;; moving away from it
+      (assoc motion :pos-x (+ (:w viewport) radius))
+      (and (>= x (+ (:w viewport) radius))       ;; right
            (>= (nth dir 0) 0))
-      (assoc m :pos-x (- 0 r))
-      (and (<= y (- 0 r))                   ;; above
+      (assoc motion :pos-x (- 0 radius))
+      (and (<= y (- 0 radius))                   ;; above
            (<= (nth dir 1) 0))
-      (assoc m :pos-y (+ (:h viewport) r))
-      (and (>= y (+ (:h viewport) r))       ;; beneath
+      (assoc motion :pos-y (+ (:h viewport) radius))
+      (and (>= y (+ (:h viewport) radius))       ;; beneath
            (>= (nth dir 1) 0))
-      (assoc m :pos-y (- 0 r))
+      (assoc motion :pos-y (- 0 radius))
       :else
       (let [moved-x (* s (nth dir 0))
             moved-y (* s (nth dir 1))
             new-x   (+ x moved-x)
             new-y   (+ y moved-y)]
-        (assoc m :pos-x new-x :pos-y new-y)))))
+        (assoc motion :pos-x new-x :pos-y new-y)))))
 
 
 (defn update-motion
@@ -358,6 +361,50 @@
   [expierable time]
   (let [t (- (:ttl expierable) time)]
     (assoc expierable :ttl t)))
+
+
+;; ----------------------------------------------------------------------
+;;  Collision
+;; ----------------------------------------------------------------------
+
+
+(def quadrant
+  {})
+
+
+(def quad-tree
+  {:depth 0
+   })
+
+
+(defn qtree-generate
+  [state depth]
+  ())
+
+
+(defn qtree-query
+  [tree x y]
+  ())
+
+
+(defn circle-collided?
+  [m1 m2 r1 r2]
+  (let [x1 (get-in m1 [:pos-x])
+        x2 (get-in m2 [:pos-x])
+        y1 (get-in m1 [:pos-y])
+        y2 (get-in m2 [:pos-y])
+        a  (- x1 x2)
+        b  (- y2 y2)
+        h  (.sqrt js/Math (+ (* a a) (* b b)))]
+    (if (< h (+ r1 r2))
+      true
+      false)))
+
+
+(defn update-collisions
+  [state]
+  (let [qtree (qtree-generate state 3)
+        ]))
 
 ;; ----------------------------------------------------------------------
 ;;  Explosion
@@ -378,8 +425,12 @@
   [state x y n]
   (assoc state
          :explosions (conj (:explosions state)
-                           ;; (vec (repeat n (particle-spawn x y))))))  ;; for some reason this wont work
+                           ;; (vec (repeat n (particle-spawn x y))))))  ;; for some reason this won't work
                            [(particle-spawn x y) (particle-spawn x y) (particle-spawn x y)
+                            (particle-spawn x y) (particle-spawn x y) (particle-spawn x y)
+                            (particle-spawn x y) (particle-spawn x y) (particle-spawn x y)
+                            (particle-spawn x y) (particle-spawn x y) (particle-spawn x y)
+                            (particle-spawn x y) (particle-spawn x y) (particle-spawn x y)
                             (particle-spawn x y) (particle-spawn x y) (particle-spawn x y)
                             (particle-spawn x y) (particle-spawn x y) (particle-spawn x y)
                             (particle-spawn x y) (particle-spawn x y) (particle-spawn x y)
@@ -462,7 +513,7 @@
                                remaining-bullets)))))
 
 ;; ----------------------------------------------------------------------
-;;  player stuff
+;;  Player
 ;; ----------------------------------------------------------------------
 
 (defn update-player-position
@@ -525,6 +576,8 @@
 
 
 (reset! game-state (comet-spawn @game-state false))
+(reset! game-state (comet-spawn @game-state false))
+(reset! game-state (comet-spawn @game-state false))
 
 
 (defn update-frame
@@ -542,5 +595,8 @@
                        (update-time-delta @game-state)))))))))))
       (.requestAnimationFrame js/window update-frame)))
 
+(defn frame
+  [state ]
+  )
 
 (.requestAnimationFrame js/window update-frame)
