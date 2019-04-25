@@ -25,215 +25,12 @@
 
 (ns comets.core
   (:require [goog.string.format]
-            [comets.math :as math]
-            [goog.string :as gstr]))
-
-;; The canvas surface on which to draw
-(def surface (.getElementById js/document "surface"))
-
-;; Drawing context
-(def context (.getContext surface "2d"))
-
-;;
-(def viewport {:w 900 :h 600})
-
-;; ----------------------------------------------------------------------
-;;
-;;  Input stuff
-;;
-;; ----------------------------------------------------------------------
-
-;; It's more convinient to grab input events and then poll them later
-(def mouse-pos  (atom {:x 1 :y 1}))
-(def keys-down  (atom {:w [0 0] :a [0 0] :s [0 0] :d [0 0]}))
-(def click-down (atom false))
+            [comets.math  :as math]
+            [comets.input :as input]
+            [comets.draw  :as draw]
+            [goog.string  :as gstr]))
 
 
-(defn is-canvas-coord
-  "Find out whether current mouse coordinates are inside the canvas"
-  [canvas-rect event]
-  (let [view-x (aget event "clientX")
-        view-y (aget event "clientY")
-        rect-l (aget canvas-rect "left")
-        rect-t (aget canvas-rect "top")
-        rect-b (aget canvas-rect "bottom")
-        rect-r (aget canvas-rect "right")]
-    (if (or (< view-x rect-l)
-            (> view-x rect-r)
-            (< view-y rect-t)
-            (> view-y rect-b))
-      false
-      true)))
-
-
-(defn update-mouse-down
-  [event]
-  (reset! click-down true))
-
-
-(defn update-mouse-up
-  [event]
-  (reset! click-down false))
-
-
-(defn update-mouse-pos
-  "Update relative canvas mouse coordinates."
-  [event]
-  (reset! mouse-pos
-          (let [rect (.getBoundingClientRect surface)
-                new-x (- (aget event "clientX") (aget rect "left"))
-                new-y (- (aget event "clientY") (aget rect "top"))]
-            (if (is-canvas-coord rect event)
-              {:x new-x :y new-y}
-              {:x (:x @mouse-pos) :y (:y @mouse-pos)}))))
-
-
-(defn update-key-down
-  [event]
-  (let [keys @keys-down]
-    (case (aget event "keyCode")
-      87 (reset! keys-down (update-in keys [:w] (fn [] [ 0 -1])))
-      65 (reset! keys-down (update-in keys [:a] (fn [] [-1  0])))
-      83 (reset! keys-down (update-in keys [:s] (fn [] [ 0  1])))
-      68 (reset! keys-down (update-in keys [:d] (fn [] [ 1  0])))
-      event)))
-
-
-(defn update-key-up
-  [event]
-  (let [keys @keys-down]
-    (case (aget event "keyCode")
-      87 (reset! keys-down (update-in keys [:w] (fn [] [0 0])))
-      65 (reset! keys-down (update-in keys [:a] (fn [] [0 0])))
-      83 (reset! keys-down (update-in keys [:s] (fn [] [0 0])))
-      68 (reset! keys-down (update-in keys [:d] (fn [] [0 0])))
-      event)))
-
-;; ----------------------------------------
-;;  Register callbacks
-;; ----------------------------------------
-(aset js/window "onmousemove" update-mouse-pos)
-(aset js/window "onkeydown" update-key-down)
-(aset js/window "onkeyup" update-key-up)
-(aset js/window "onmouseup" update-mouse-up)
-(aset js/window "onmousedown" update-mouse-down)
-
-;; ----------------------------------------------------------------------
-;;
-;;  Drawing functions
-;;
-;; ----------------------------------------------------------------------
-
-(defn draw-player-ship
-  [state context]
-  (let [px (get-in state [:player :motion :pos-x])
-        py (get-in state [:player :motion :pos-y])
-        angle (get-in state [:player :rotation-angle])]
-    (do (.save context)
-        (.translate context px py)
-        (.rotate context angle)
-        (.translate context -10 -5)
-        (.beginPath context)
-        (.moveTo context 0 0)
-        (.lineTo context 5 5)
-        (.lineTo context 0, 10)
-        (.lineTo context 20, 5)
-        (.lineTo context 0 0)
-        (.stroke context)
-        (.restore context))))
-
-
-(defn draw-particles
-  [particles context color]
-  (doseq [p particles]
-    (let [px (get-in p [:motion :pos-x])
-          py (get-in p [:motion :pos-y])
-          r  (:radius p)]
-      (do (.save context)
-          (.beginPath context)
-          (aset context "fillStyle" color)
-          (.arc context (+ px r) (+ py r) r 0 (* 2 3.1415) false)
-          (.fill context)
-          (.closePath context)
-          (.restore context)))))
-
-
-(defn draw-bullets
-  [state context]
-  (draw-particles (:bullets state) context "#81F7D8"))
-
-
-(defn draw-explosions
-  [state context]
-  (doseq [e (:explosions state)]
-    (draw-particles e context "white")))
-
-
-(defn draw-comets
-  [state comets]
-  (doseq [c (:comets state)]
-    (let [cx (get-in c [:motion :pos-x])
-          cy (get-in c [:motion :pos-y])
-          r  (:radius c)]
-      (if (:is-fragment c)
-        (do (.save context)
-            (.beginPath context)
-            (.arc context (+ cx r) (+ cy r) r 0 (* 2 3.1415) false)
-            (.stroke context)
-            (.closePath context)
-            (.restore context))
-        (do (.save context)
-            (.beginPath context)
-            (.moveTo context cx (- cy r)) ;; base
-            (.lineTo context (+ cx (* r 0.2)) (- cy (* r 0.4)))
-            (.lineTo context (+ cx (* r 0.8)) (- cy (* r 0.8)))
-            (.lineTo context (+ cx r) cy) ;; base
-            (.lineTo context (+ cx (* r 0.6)) (+ cy (* r 0.1)))
-            (.lineTo context (+ cx (* r 0.8)) (+ cy (* r 0.9)))
-            (.lineTo context (+ cx (* r 0.2)) (+ cy (* r 0.8)))
-            (.lineTo context cx (+ cy r)) ;; base
-            (.lineTo context (- cx (* r 0.7)) (+ cy (* r 0.5)))
-            (.lineTo context (- cx (* r 0.6)) (+ cy (* r 0.2)))
-            (.lineTo context (- cx r) cy) ;; base
-            (.lineTo context cx (- cy r)) ;; base
-            (.stroke context)
-            (.restore context))))))
-
-
-(defn draw-hud
-  [state context]
-  (let [score (get-in state [:player :score])
-        lives (get-in state [:player :lives])]
-    (do (.beginPath context)
-        (.rect context 0 0 (:w viewport) (:h viewport))
-        (aset context "lineWidth" 1)
-        (aset context "strokeStyle" "white")
-        (.stroke context)
-        (aset context "font" "20px Share Tech Mono")
-        (aset context "fillStyle" "white")
-        (.fillText context (gstr/format "score: %s" score) 15 30)
-        (.fillText context (gstr/format "lives: %s" lives) 15 55)
-        (aset context "font" "8px Sans")
-        (aset context "fillStyle" "white")
-        (.fillText context (gstr/format "Moving around (W,A,S,D) / Aiming (Mouse pointer) / Shooting (Left click)") 15 (- (:h viewport) 10)))))
-
-
-(defn draw-alien-ship
-  [state]
-   ())
-
-
-(defn draw-frame
-  [state]
-  (do (.clearRect context 0 0 (:w viewport) (:h viewport))
-      (draw-player-ship state context)
-      (draw-bullets state context)
-      (draw-explosions state context)
-      (draw-comets state context)
-      (draw-hud state context)
-      state))
-
-;; ----------------------------------------------------------------------
 ;;  Timing functions
 ;; ----------------------------------------------------------------------
 
@@ -276,8 +73,8 @@
 
 (def player
   {:motion (assoc motion
-                  :pos-x (/ (:w viewport) 2)
-                  :pos-y (/ (:h viewport) 2)
+                  :pos-x (/ (:w draw/viewport) 2)
+                  :pos-y (/ (:h draw/viewport) 2)
                   :speed 120)
    :forward-vector [0 0]
    :rotation-angle 0
@@ -285,6 +82,11 @@
    :lives 3
    :health 100
    :attack-delay 130
+
+   :is-spawned true
+   :spawn-state-duration 2500 ; 2.5 seconds
+   :spawn-timestamp (.now js/Date)
+
    :time-before-attack 0
    :collision-circle-radius 5
    :score 0})
@@ -304,7 +106,7 @@
    :health 100
    :spawn-delay 2500
    :time-before-spawn 0
-   :collision-circle-radius 40})
+   :collision-circle-radius 36})
 
 
 (def particle
@@ -332,14 +134,14 @@
     (cond
       (and (<= x (- 0 radius))                   ;; Object is to the left of the viewport and is
            (<= (nth dir 0) 0))                   ;; moving away from it
-      (assoc motion :pos-x (+ (:w viewport) radius))
-      (and (>= x (+ (:w viewport) radius))       ;; right
+      (assoc motion :pos-x (+ (:w draw/viewport) radius))
+      (and (>= x (+ (:w draw/viewport) radius))       ;; right
            (>= (nth dir 0) 0))
       (assoc motion :pos-x (- 0 radius))
       (and (<= y (- 0 radius))                   ;; above
            (<= (nth dir 1) 0))
-      (assoc motion :pos-y (+ (:h viewport) radius))
-      (and (>= y (+ (:h viewport) radius))       ;; beneath
+      (assoc motion :pos-y (+ (:h draw/viewport) radius))
+      (and (>= y (+ (:h draw/viewport) radius))       ;; beneath
            (>= (nth dir 1) 0))
       (assoc motion :pos-y (- 0 radius))
       :else
@@ -368,48 +170,49 @@
 ;; ----------------------------------------------------------------------
 
 
-(def quadrant
-  {})
-
-
-(def quad-tree
-  {:depth 0
-   })
-
-
-(defn qtree-generate
-  [state depth]
-  ())
-
-
-(defn qtree-query
-  [tree x y]
-  ())
-
-
 (defn circle-collided?
   [m1 m2 r1 r2]
   (let [x1 (get-in m1 [:pos-x])
         x2 (get-in m2 [:pos-x])
         y1 (get-in m1 [:pos-y])
         y2 (get-in m2 [:pos-y])
-        a  (- x1 x2)
-        b  (- y2 y2)
+        a  (- (max x1 x2) (min x1 x2))
+        b  (- (max y1 y2) (min y1 y2))
         h  (.sqrt js/Math (+ (* a a) (* b b)))]
     (if (< h (+ r1 r2))
       true
       false)))
 
-
-(defn update-collisions
+(defn respawn-player
   [state]
-  (let [qtree (qtree-generate state 3)
-        ]))
+  (assoc (get-in state [:player])
+         :motion (get-in player [:motion])
+         :lives (- (get-in (get-in state [:player]) [:lives]) 1)
+         :is-spawned true
+         :spawn-timestamp (.now js/Date)))
+
+
+
+(defn player-comet-collision
+  [state]
+  (let [p-motion (get-in state [:player :motion])
+        p-radius (get-in state [:player :collision-circle-radius])
+        comets   (get-in state [:comets])]
+    (if (get-in state [:player :is-spawned])
+      state
+      (if (some #(let [comet-motion (:motion %1)
+                       comet-radius (:collision-circle-radius %1)]
+                   (circle-collided? p-motion comet-motion p-radius comet-radius))
+                comets)
+        (let [lives (get-in state [:player :lives])]
+          (assoc state :player (respawn-player state)))
+        state))))
 
 ;; ----------------------------------------------------------------------
 ;;  Explosion
 ;; ----------------------------------------------------------------------
 
+;;; TODO SHIP BRAKEUP ANIMATION
 (defn particle-spawn
   [x y]
   (let [m (assoc motion
@@ -425,7 +228,7 @@
   [state x y n]
   (assoc state
          :explosions (conj (:explosions state)
-                           ;; (vec (repeat n (particle-spawn x y))))))  ;; for some reason this won't work
+                           ;; (vec (repeat n (particle-spawn x y))))))
                            [(particle-spawn x y) (particle-spawn x y) (particle-spawn x y)
                             (particle-spawn x y) (particle-spawn x y) (particle-spawn x y)
                             (particle-spawn x y) (particle-spawn x y) (particle-spawn x y)
@@ -465,21 +268,21 @@
 (defn comet-spawn
   [state is-fragment]
   (let [rad (if is-fragment
-               (/ (:radius comet) 2)
-               (:radius comet))
+              (/ (:radius comet) 2)
+              (:radius comet))
         axi (math/rng-int 2)                      ;; the axis on which the comet is spawned: x=0 y=1
         pos (if (= axi 0)                         ;; position on the x or y axis
-              {:x (math/rng-int (:w viewport)) :y (- rad 1)}
-              {:x (- rad 1) :y (math/rng-int (:h viewport))})
+              {:x (math/rng-int (:w draw/viewport)) :y (- rad 1)}
+              {:x (- rad 1) :y (math/rng-int (:h draw/viewport))})
         dir (math/vector-normalize [(math/rng-float) (math/rng-float)])]
     (assoc state :comets
-       (conj (:comets state)
-             (assoc comet
-                    :motion (assoc motion :pos-x (:x pos)
-                                          :pos-y (:y pos)
-                                          :speed 100
-                                          :dir dir)
-                    :radius rad)))))
+           (conj (:comets state)
+                 (assoc comet
+                        :motion (assoc motion :pos-x (:x pos)
+                                       :pos-y (:y pos)
+                                       :speed 100
+                                       :dir dir)
+                        :radius rad)))))
 
 
 (defn update-comets
@@ -516,6 +319,23 @@
 ;;  Player
 ;; ----------------------------------------------------------------------
 
+(defn update-player-spawn-timer
+  [state]
+  (if-not (:is-spawned (get-in state [:player]))
+    ;; It's not spawned so just return the state as is
+    state
+    ;; It's in spawn state. Advance the timer
+    (let [player    (get-in state [:player])
+          duration  (:spawn-state-duration player)
+          timestamp (:spawn-timestamp player) ;; rename to spawn time
+          timenow   (.now js/Date)]
+      (if (>= (- timenow timestamp) duration)
+        (assoc state :player (assoc player :is-spawned false))
+        state))))
+
+
+
+
 (defn update-player-position
   [state]
   (let [player (get-in state [:player])
@@ -528,10 +348,10 @@
   (update-in state [:player :motion :dir]
              (fn [] (math/vector-normalize
                      (map +
-                          (:w @keys-down)
-                          (:a @keys-down)
-                          (:s @keys-down)
-                          (:d @keys-down))))))
+                          (:w @input/keys-down)
+                          (:a @input/keys-down)
+                          (:s @input/keys-down)
+                          (:d @input/keys-down))))))
 
 
 (defn update-player-rotation-angle
@@ -540,15 +360,15 @@
   direction is based on the position of the mouse sursor. the player ship
   should always facing the cursor"
   [state]
-  (let [mx  (:x @mouse-pos)                   ;; mouse pointer x coordinate
-        my  (:y @mouse-pos)                   ;; mouse pointer y coordinate
+  (let [mx  (:x @input/mouse-pos)                   ;; mouse pointer x coordinate
+        my  (:y @input/mouse-pos)                   ;; mouse pointer y coordinate
         px  (get-in state [:player :motion :pos-x]) ;; player position x
         py  (get-in state [:player :motion :pos-y]) ;; player position y
         a   (- px mx)                         ;; distance between the mouse and the player along the x axis
         b   (- py my)                         ;; distance between the mouse and the player along the y axis
         ang (.atan2 js/Math a b)
         adj (* -1 (+ ang (/ 3.1415 2)))]      ;; the angle at which the player would be facing the mouse
-                                              ;; * -1 flips the direction of the rotation
+    ;; * -1 flips the direction of the rotation
     (update-in (update-in state [:player :rotation-angle] (fn [] adj))
                [:player :forward-vector] (fn [] (math/vector-normalize [(* a -1) (* -1 b)])))))
 
@@ -562,7 +382,7 @@
         delay (get-in state [:player :attack-delay])
         think (get-in state [:player :time-before-attack])
         time  (get-in state [:time :delta])]
-    (if (and @click-down (<= think 0))
+    (if (and @input/click-down (<= think 0))
       (update-in (bullet-spawn state (assoc motion
                                             :pos-x (+ px (* 11 fw-x))
                                             :pos-y (+ py (* 11 fw-y))
@@ -583,20 +403,19 @@
 (defn update-frame
   []
   (do (reset! game-state
-              (update-time-start
-               (draw-frame
-                (update-explosions
-                 (update-comets
-                  (update-bullets
-                   (update-player-attack
-                    (update-player-position
-                     (update-player-direction
-                      (update-player-rotation-angle
-                       (update-time-delta @game-state)))))))))))
+              (->> (update-time-delta @game-state)
+                   (update-player-spawn-timer)
+                   (update-player-rotation-angle)
+                   (update-player-direction)
+                   (update-player-position)
+                   (update-player-attack)
+                   (update-bullets)
+                   (update-comets)
+                   (update-explosions)
+                   (player-comet-collision)
+                   (draw/draw-frame)
+                   (update-time-start)))
       (.requestAnimationFrame js/window update-frame)))
 
-(defn frame
-  [state ]
-  )
 
 (.requestAnimationFrame js/window update-frame)
